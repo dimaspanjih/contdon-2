@@ -1,0 +1,200 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hitung Mundur</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent; /* Transparent page background */
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        .countdown-container {
+            text-align: center;
+            background: linear-gradient(135deg, #D71920, #D71920); /* Darker gradient for pressed effect */
+            width: 250px; /* Set width */
+            height: 70px; /* Set height */
+            padding: 8px 4px; /* Reduced left/right padding */
+            border-radius: 10px;
+            box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.4), /* Inset shadow for pressed look */
+                        0 2px 8px rgba(0, 0, 0, 0.2); /* Outer shadow for depth */
+            color: #fff;
+            display: flex;
+            flex-direction: column; /* Stack title and countdown vertically */
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: 1em; /* Font size for title */
+            margin: 0 0 5px 0; /* Adjusted margin */
+            color: #f0f0f0; /* Soft white */
+            text-shadow: 0 0 5px rgba(240, 240, 240, 0.6);
+        }
+
+        .countdown {
+            display: flex;
+            gap: 6px; /* Increased gap for more spacing between time blocks */
+            justify-content: center;
+        }
+
+        .time-block {
+            background: rgba(255, 255, 255, 0.15); /* Slightly darker for pressed effect */
+            padding: 4px 3px; /* Reduced left/right padding */
+            border-radius: 6px;
+            min-width: 27px; /* Slightly reduced min-width to fit increased gap */
+            transition: transform 0.3s ease;
+        }
+
+        .time-block:hover {
+            transform: scale(1.1);
+        }
+
+        .time {
+            font-size: 1.3em; /* Font size for numbers */
+            font-weight: bold;
+            color: #f0f0f0; /* Soft white */
+            text-shadow: 0 0 5px rgba(240, 240, 240, 0.5);
+        }
+
+        .label {
+            font-size: 0.65em; /* Font size for labels */
+            text-transform: uppercase;
+            margin-top: 2px; /* Reduced margin */
+            color: #e0e0e0;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .time-block {
+            animation: pulse 2s infinite;
+        }
+
+        @media (max-width: 600px) {
+            .countdown-container {
+                padding: 6px 3px; /* Reduced left/right padding */
+                width: 200px;
+                height: 60px; /* Adjusted for mobile */
+            }
+
+            h1 {
+                font-size: 0.9em;
+            }
+
+            .time {
+                font-size: 1.1em;
+            }
+
+            .time-block {
+                min-width: 23px;
+                padding: 3px 2px;
+            }
+
+            .label {
+                font-size: 0.55em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="countdown-container">
+        <h1>Penawaran Berakhir dalam:</h1>
+        <div class="countdown">
+            <div class="time-block">
+                <div class="time" id="hari">00</div>
+                <div class="label">Hari</div>
+            </div>
+            <div class="time-block">
+                <div class="time" id="jam">00</div>
+                <div class="label">Jam</div>
+            </div>
+            <div class="time-block">
+                <div class="time" id="menit">00</div>
+                <div class="label">Menit</div>
+            </div>
+            <div class="time-block">
+                <div class="time" id="detik">00</div>
+                <div class="label">Detik</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const targetDate = new Date('2025-07-13T23:55:00+07:00').getTime();
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+
+            if (distance < 0) {
+                clearInterval(interval);
+                document.querySelector('.countdown-container').innerHTML = '<h1>Hitung Mundur Selesai!</h1>';
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('hari').textContent = String(days).padStart(2, '0');
+            document.getElementById('jam').textContent = String(hours).padStart(2, '0');
+            document.getElementById('menit').textContent = String(minutes).padStart(2, '0');
+            document.getElementById('detik').textContent = String(seconds).padStart(2, '0');
+        }
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>
